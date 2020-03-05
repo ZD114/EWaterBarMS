@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:p="http://www.springframework.org/schema/p"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:aop="http://www.springframework.org/schema/aop" xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+	 http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd
+	 http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.0.xsd
+	 http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.0.xsd"
+       default-autowire="byName">
+
+    <!-- 1开启注解： -->
+    <context:annotation-config></context:annotation-config>
+
+    <!-- 2 设置扫描的包 表示不扫描控制层，控制层由springMVC来扫描 -->
+    <context:component-scan base-package="com.etc">
+        <!-- 表示不扫描控制层 -->
+        <context:exclude-filter type="annotation"
+                                expression="org.springframework.stereotype.Controller" />
+    </context:component-scan>
+
+    <!-- 设置与数据库配置文件关联 引入配置文件 读取数据库有关的配置信息-->
+    <bean id="propertyConfigurer"
+          class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="location" value="classpath:jdbc.properties" />
+    </bean>
+
+    <!--3  配置数据源连接池有关的属性 -->
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource">
+        <property name="url" value="${url}"></property>
+        <property name="username" value="${username}"></property>
+        <property name="password" value="${password}"></property>
+        <property name="driverClassName" value="${driver}"></property>
+        <!-- 初始化连接大小 -->
+        <property name="initialSize" value="${initialSize}"></property>
+        <!-- 连接池最大数量 -->
+        <property name="maxActive" value="${maxActive}"></property>
+        <!-- 连接池最大空闲 -->
+        <property name="maxIdle" value="${maxIdle}"></property>
+        <!-- 连接池最小空闲 -->
+        <property name="minIdle" value="${minIdle}"></property>
+        <!-- 获取连接最大等待时间 -->
+        <property name="maxWait" value="${maxWait}"></property>
+    </bean>
+    <!-- spring和MyBatis完美整合，不需要mybatis的配置映射文件 -->
+    <!--4  mybatis的配置  SqlSessionFactoryBean的配置和注入操作-->
+    <bean id="sessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <!-- ① 配置和数据源有关 -->
+        <property name="dataSource" ref="dataSource"></property>
+        <!-- ②其他的属性 和映射文件有关的配置信息 -->
+        <property name="mapperLocations" value="classpath:mapper/*.xml">
+        </property>
+        <!--给实体类取别名-->
+        <property name="typeAliasesPackage" value="com.etc.entity"></property>
+        <!-- 配置pagehelper分页插件 -->
+        <property name="plugins">
+            <array>
+                <bean class="com.github.pagehelper.PageInterceptor">
+                    <property name="properties">
+                        <!--使用下面的方式配置参数，一行配置一个 -->
+                        <value>helperDialect=mysql</value>
+                    </property>
+                </bean>
+            </array>
+        </property>
+    </bean>
+    <!-- 5 配置扫描器 MapperScannerConfigurer 需要用到mybatis-spring.jar-->
+    <!-- spring跟mybatis的整合，扫描所有的dao下的接口，然后创建接口的实现类 -->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <!-- DAO接口所在包名，Spring会自动查找其下的类 -->
+        <property name="basePackage" value="com.etc.dao"></property>
+        <!-- 注意这里的是value 不是ref   -->
+        <property name="sqlSessionFactoryBeanName" value="sessionFactory"></property>
+    </bean>
+
+    <!-- 配置事务管理器  事务核心管理器,封装了所有事务操作. 依赖于连接池-->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager"></bean>
+    <!--开启注解方式事务管理-->
+    <tx:annotation-driven/>
+
+    <!--&lt;!&ndash;配置通知的使用&ndash;&gt;
+    <tx:advice id="txAdvice" transaction-manager="transactionManager">
+        <tx:attributes>
+            <tx:method name="*get" read-only="true"/>
+            <tx:method name="*query" read-only="true"/>
+            &lt;!&ndash;其他方法使用默认&ndash;&gt;
+            <tx:method name="*" propagation="REQUIRED"></tx:method>
+        </tx:attributes>
+    </tx:advice>
+    &lt;!&ndash;aop配置&ndash;&gt;
+    <aop:config>
+        &lt;!&ndash;切入点配置&ndash;&gt;
+        <aop:pointcut id="pointCut" expression="execution(* com.etc.service.impl.*.*(..))"></aop:pointcut>
+        &lt;!&ndash;配置切入点与通知器的关联&ndash;&gt;
+        <aop:advisor advice-ref="txAdvice" pointcut-ref="pointCut"></aop:advisor>
+    </aop:config>-->
+</beans>
